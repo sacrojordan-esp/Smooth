@@ -1,0 +1,4 @@
+1 Acceder al Bearer y pasarlo a detecty.py - EJECUTAR
+
+2 Copiar el user-id de 1MOTORIZADO y colocarlo en la configuracion de sm.py
+3 Colocar correctamente la informacion en el cuadro de CONFIGURACION RAIZ
