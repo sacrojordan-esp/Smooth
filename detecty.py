@@ -1,7 +1,7 @@
 import requests
 
 # CONFIGURACIÓN ==========================
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE4MjNhNGE3LTMzZmItNDUwZi04NjFhLWI2NGI1ZTQzZmM2YSIsInRva2VuVmVyc2lvbiI6MywiaWF0IjoxNzcyMTU5Njc0LCJleHAiOjE3NzIxODEyNzR9.zxzn9NOPPxShdNz5KBQGsj7V16MBituVhel8HAMESxo"
+TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNmMTc1ZTY4LTljMjQtNGFmMi1hNjFmLTRkNDczMjljM2ZiNCIsInRva2VuVmVyc2lvbiI6ODIsImlhdCI6MTc3MjIyNDY0OCwiZXhwIjoxNzcyMjQ2MjQ4fQ.ycFnpGz2q4I2OHWSn-FwAcEHDIdhIzEghr2_IGthKGE"
 BASE_URL = "https://api.whaticket.com"
 
 HEADERS = {
@@ -12,7 +12,7 @@ HEADERS = {
 # CONSULTAS ==========================
 QUEUE_CONFIRMADO = "CONFIRMADO ALICOD"
 QUEUE_REGISTRADO = "REGISTRADO ALICOD"
-USUARIO_MOTORIZADO = "1MOTORIZADO"
+USUARIO_MOTORIZADO = "1MOTORIZADOS"
 
 # FUNCIONES ==========================
 def obtener_queue_id_por_nombre(nombre_queue):

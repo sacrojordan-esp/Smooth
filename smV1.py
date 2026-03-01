@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime, timedelta
+import json
 
 # ============================= TOKEN ===================================
 TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjIxMWIxZWUzLTM5NmQtNDU2NC1hZDNmLWQ2Y2NiYzRjM2VmZiIsInRva2VuVmVyc2lvbiI6MjkyLCJpYXQiOjE3NzIyNDkzMjAsImV4cCI6MTc3MjI3MDkyMH0.AYPCG8X3k8Y2Z7hNMNv8nkCauQRtT9PDa-TIT3vJnpo"
@@ -55,6 +56,7 @@ def obtener_tag_y_fecha():
 
     for tag in tags:
         if tag["name"] == dia_tag:
+            print("Tag encontrado:", dia_tag)
             return tag["id"], fecha_texto
 
     return None, fecha_texto
@@ -64,6 +66,7 @@ def obtener_queue_id(nombre_queue):
     queues = response.json()
     for queue in queues:
         if queue["name"] == nombre_queue:
+            print("Queue encontrada:", nombre_queue)
             return queue["id"]
     return None
 
@@ -95,6 +98,98 @@ def obtener_connection(connection_id):
     if response.status_code == 200:
         return response.json()
     return None
+
+def enviar_mensaje(ticket_id, texto):
+    url = f"{BASE_URL}/messages/{ticket_id}"
+    payload = {"body": texto}
+    try:
+        response = requests.post(url, json=payload, headers=HEADERS)
+        response.raise_for_status()
+        print(f"Mensaje enviado -> {response.status_code}")
+    except requests.exceptions.HTTPError as e:
+        print(f"Error enviando mensaje Ticket {ticket_id}: {e}")
+
+def programar_mensaje(ticket_id, texto, dias_sumar, hora_envio):
+    url = f"{BASE_URL}/messages/{ticket_id}"
+    fecha_programada = datetime.now() + timedelta(days=dias_sumar)
+    fecha_programada = fecha_programada.replace(
+        hour=hora_envio, minute=0, second=0, microsecond=0
+    )
+    payload = {
+        "body": texto,
+        "fromMe": True,
+        "isNote": False,
+        "scheduleDate": fecha_programada.isoformat() + "Z",
+        "signMessage": False
+    }
+    response = requests.post(url, json=payload, headers=HEADERS)
+    print(f"Mensaje programado -> {response.status_code}")
+
+def enviar_plantilla(ticket_id, nombre_plantilla, parametros):
+    url = f"{BASE_URL}/messages/{ticket_id}"
+    
+    if parametros:
+        payload = {
+            "body": parametros[0],
+            "template": {
+                "name": nombre_plantilla,
+                "language": {"code": "es_ES"},
+                "components": [{
+                    "type": "body",
+                    "parameters": [{"type": "text", "text": p} for p in parametros]
+                }]
+            }
+        }
+    else:
+        template_id = TEMPLATE_ID_NOT1 if nombre_plantilla == "not1" else TEMPLATE_ID_NOT2
+        mensaje = (
+            "*Buenas noticias*\n"
+            "Tu Pedido Esta en Camino y Llegara Mañana\n\n"
+            "Nuestro equipo esta trabajando para que todo llegue a ti sin contratiempos.\n\n"
+            "Gracias por confiar en nuestra empresa NOVEDADES WOW SAC"
+        ) if nombre_plantilla == "not1" else (
+            "Hola\n\n"
+            "Estamos emocionados de contarte que tu pedido esta a punto de ser entregado.\n\n"
+            "Para garantizar una entrega exitosa, te pedimos amablemente que respondas al motorizado que se pondra en contacto contigo.\n\n"
+            "Que tengas un excelente dia"
+        )
+        payload = {
+            "body": mensaje,
+            "template": {
+                "templateId": template_id
+            }
+        }
+    
+    response = requests.post(url, json=payload, headers=HEADERS)
+    print(f"Plantilla {nombre_plantilla} enviada -> {response.status_code}")
+    return response
+
+def programar_plantilla(ticket_id, nombre_plantilla, parametros, dias_sumar, hora_envio):
+    url = f"{BASE_URL}/messages/{ticket_id}"
+    fecha_programada = datetime.now() + timedelta(days=dias_sumar)
+    fecha_programada = fecha_programada.replace(
+        hour=hora_envio, minute=0, second=0, microsecond=0
+    )
+    
+    template_id = TEMPLATE_ID_NOT1 if nombre_plantilla == "not1" else TEMPLATE_ID_NOT2
+    
+    # Estructura con metadata
+    payload = {
+        "fromMe": True,
+        "isNote": False,
+        "scheduleDate": fecha_programada.isoformat() + "Z",
+        "signMessage": False,
+        "metadata": {
+            "templateId": template_id,
+            "variables": parametros if parametros else []
+        }
+    }
+    
+    print(f"Enviando payload: {json.dumps(payload, indent=2)}")
+    response = requests.post(url, json=payload, headers=HEADERS)
+    print(f"Status Code: {response.status_code}")
+    print(f"Respuesta: {response.text}")
+    return response
 
 def enviar_nota_rapida(ticket_id, nombre_nota, dias_sumar=0, hora_envio=None, contacto_nombre=""):
     """Envía una nota rápida de Whaticket usando el texto directo"""
@@ -142,8 +237,11 @@ def enviar_nota_rapida(ticket_id, nombre_nota, dias_sumar=0, hora_envio=None, co
             "signMessage": False
         }
     
+    print(f"Enviando {nombre_nota}")
     response = requests.post(url, json=payload, headers=HEADERS)
-    print(f"{nombre_nota}: {response.status_code}")
+    print(f"Status: {response.status_code}")
+    if response.status_code != 201:
+        print(f"Error: {response.text}")
     return response
 
 def enviar_plantilla_waba(ticket_id, nombre_plantilla, parametros=None, dias_sumar=0, hora_envio=None):
@@ -159,7 +257,7 @@ def enviar_plantilla_waba(ticket_id, nombre_plantilla, parametros=None, dias_sum
         body_texto = "*¡Buenas noticias😀!*\n ¡Tu Pedido Está en Camino y Llegará *Mañana*!\n\n 🚀  Nuestro equipo está trabajando para que todo llegue a ti sin contratiempos👥.  \n\nGracias por confiar en nuestra empresa *NOVEDADES WOW SAC,* *Saludos Cordiales🤝*"
     elif nombre_plantilla == "NOT2":
         template_id = TEMPLATE_ID_NOT2
-        body_texto = "Hola😀,\n¡Estamos emocionados de contarte que *tu pedido está a punto de ser entregado*! 📦\n\nPara garantizar una entrega exitosa, te pedimos amablemente que respondas al motorizado que se pondra en contacto contigo🏍️🤳\n\nQue tengas un excelente dia 🤝🤩"
+        body_texto = "Hola😀,\n¡Estamos emocionados de contarte que *tu pedido está a punto de ser entregado*! 📦\n\nPara garantizar una entrega exitosa, te pedimos amablemente que respondas al motorizado que se pondrá en contacto contigo🏍️🤳\n\nQue tengas un excelente día 🤝🤩"
     else:
         template_id = None
         body_texto = ""
@@ -194,8 +292,11 @@ def enviar_plantilla_waba(ticket_id, nombre_plantilla, parametros=None, dias_sum
             }
         }
     
+    print(f"Enviando {nombre_plantilla}")
     response = requests.post(url, json=payload, headers=HEADERS)
-    print(f"{nombre_plantilla}: {response.status_code}")
+    print(f"Status: {response.status_code}")
+    if response.status_code != 201:
+        print(f"Error: {response.text}")
     return response
 
 def transferir_ticket(ticket_id, queue_id, user_id):
@@ -204,9 +305,9 @@ def transferir_ticket(ticket_id, queue_id, user_id):
     try:
         response = requests.post(url, json=payload, headers=HEADERS)
         response.raise_for_status()
-        print("OK")
+        print(f"Ticket {ticket_id} transferido correctamente.")
     except requests.exceptions.HTTPError as e:
-        print(f"Error: {e}")
+        print(f"Error transfiriendo ticket {ticket_id}: {e}")
 
 # FLUJO PRINCIPAL ==========================
 queue_id = obtener_queue_id(NOMBRE_QUEUE)
@@ -214,17 +315,19 @@ queue_id_destino = obtener_queue_id(NOMBRE_QUEUE_DESTINO)
 tag_id, fecha_texto = obtener_tag_y_fecha()
 
 if not tag_id:
-    print(f"Tag {fecha_texto} no existe")
+    print("No existe el tag correspondiente al dia:", fecha_texto)
     exit()
 if not queue_id or not queue_id_destino:
-    print("Colas no encontradas")
+    print("No se encontraron las queues necesarias")
     exit()
 
 tickets = obtener_tickets(queue_id, tag_id, USER_ID_ORIGEN)
-print(f"Tickets: {len(tickets)}")
+print("\nTickets encontrados:", len(tickets))
 
+# Aplicar limite si esta configurado
 if LIMITE_TICKETS > 0:
     tickets = tickets[:LIMITE_TICKETS]
+    print(f"Aplicando limite: {LIMITE_TICKETS} tickets")
 
 for ticket in tickets:
     connection_id = ticket.get("connectionId")
